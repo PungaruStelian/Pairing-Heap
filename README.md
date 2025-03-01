@@ -1,4 +1,4 @@
-# Assignment 1 - A Pairing Max-Heap in Racket
+# A Pairing Max-Heap in Racket
 
 In this first assignment, you will implement a **pairing max-heap** in Racket, which is an efficient tree data structure.
 
@@ -140,22 +140,9 @@ Example:
 
 3. You can define helper functions if needed. The same recursion type restrictions apply to them.
 
-4. The total score is 120 points, with 100 being the standard score and 20 bonus points.
-
-## Deductions
-
-* 10 points for each recursion type restriction not respected
-* Using procedures with side effects
-* Hardcoded answers
-
 ## Testing
 
 The `checker.rkt` file contains tests for each function. Run it to check the correctness of your implementation.
-
-## Deadline
-
-The assignment must be uploaded to vmchecker by XX.XX.2025.
-
 ## Additional Resources
 
 * [Racket Documentation](https://docs.racket-lang.org/)
