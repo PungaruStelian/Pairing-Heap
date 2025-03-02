@@ -33,33 +33,42 @@
 
 ; empty-ph : PH
 ; out: PH-ul vid
-(define empty-ph 'your-code-here)
+(define empty-ph '())
 
 ; val->ph : T -> PH
 ; in: o valoare de un tip oarecare T
 ; out: PH-ul care conține doar această valoare
-(define val->ph 'your-code-here)
+(define (val->ph T)
+  (list T))
 
 ; ph-empty? : PH -> Bool
 ; in: pairing heap ph
 ; out: true, dacă ph este vid
 ;      false, altfel
-(define ph-empty? 'your-code-here)
+(define (ph-empty? ph)
+  (null? ph))
 
 ; ph-root : PH -> T | Bool
 ; in: pairing heap ph
 ; out: false, dacă ph e vid
 ;      root(ph), altfel
 (define (ph-root ph)
-  'your-code-here)
+  (if (ph-empty? ph)
+      #f
+      (car ph)
+      )
+  )
 
 ; ph-subtrees : PH -> [PH] | Bool
 ; in: pairing heap ph
 ; out: false, dacă ph e vid
 ;      copii(ph), altfel
 (define (ph-subtrees ph)
-  'your-code-here)
-
+  (if (ph-empty? ph)
+      #f
+      (cdr ph)
+      )
+  )
 
 ; TODO 2 (15p)
 ; merge: PH x PH -> PH
@@ -78,8 +87,13 @@
 ; argumentele lui merge în ordinea
 ; specificată în enunț!
 (define (merge ph1 ph2)
-  'your-code-here)
-
+  (cond
+    ((ph-empty? ph1) ph2)
+    ((ph-empty? ph2) ph1)
+    ((< (ph-root ph1) (ph-root ph2)) (append (list (ph-root ph2)) (list ph1) (ph-subtrees ph2)))
+    (else (append (list (ph-root ph1)) (list ph2) (ph-subtrees ph1)))
+    )
+)
 
 ; TODO 3 (10p)
 ; ph-insert : T x PH -> PH
@@ -89,7 +103,8 @@
 ;    PH-ul creat doar din valoarea val
 ;    (în această ordine)
 (define (ph-insert val ph)
-  'your-code-here)
+  (merge ph (val->ph val))
+  )
 
 
 ; TODO 4 (10p)
@@ -102,7 +117,11 @@
 ; RESTRICȚII (10p):
 ;  - Folosiți recursivitate pe stivă.
 (define (list->ph lst)
-  'your-code-here)
+  (if (null? lst)
+      empty-ph
+      (ph-insert (car lst) (list->ph (cdr lst)))
+      )
+  )
 
 
 ; TODO 5 (20p)
@@ -144,8 +163,23 @@
 ;  ...
 ;  - până rămâne un singur PH
 (define (tournament-merge phs)
-  'your-code-here)
-        
+  (define (merge-pairs lst)
+    (cond
+      ((null? lst) '())  ; Lista goală => returnează lista goală
+      ((null? (cdr lst)) lst)  ; Un singur element => returnează acel element
+      (else (append (list (merge (car lst) (cadr lst))) (merge-pairs (cddr lst))))
+      )
+    )
+  
+  (define (merge-until-one lst)
+    (cond
+      ((null? lst) empty-ph)
+      ((null? (cdr lst)) (car lst))
+      (else (merge-until-one (merge-pairs lst)))
+      )
+    )
+
+  (merge-until-one phs))
 
 ; TODO 8 (10p)
 ; ph-del-root : PH -> PH | Bool
