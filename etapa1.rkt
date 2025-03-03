@@ -106,7 +106,6 @@
   (merge ph (val->ph val))
   )
 
-
 ; TODO 4 (10p)
 ; list->ph : [T] -> PH
 ; in: listă de valori lst
@@ -117,12 +116,11 @@
 ; RESTRICȚII (10p):
 ;  - Folosiți recursivitate pe stivă.
 (define (list->ph lst)
-  (if (null? lst)
+  (if (ph-empty? lst)
       empty-ph
       (ph-insert (car lst) (list->ph (cdr lst)))
       )
   )
-
 
 ; TODO 5 (20p)
 ; two-pass-merge-LR : [PH] -> PH
@@ -137,8 +135,27 @@
 ; RESTRICȚII (10p):
 ;  - Folosiți recursivitate pe coadă.
 (define (two-pass-merge-LR phs)
-  'your-code-here)
 
+  (define (pair-merge lst acc)
+    (cond
+      ((null? lst) (reverse acc))
+      ((null? (cdr lst)) (reverse (append (list (car lst)) acc)))
+      (else (pair-merge (cddr lst) (append (list (merge (car lst) (cadr lst))) acc)))
+      )
+    )
+
+  (define (merge-left lst acc)
+    (if (null? lst)
+        acc
+        (merge-left (cdr lst) (merge acc (car lst)))
+        )
+    )
+  
+  (if (null? phs)
+      empty-ph
+      (merge-left (cdr (pair-merge phs empty-ph)) (car (pair-merge phs empty-ph)))
+      )
+  )
 
 ; TODO 6 (20p)
 ; two-pass-merge-RL : [PH] -> PH
@@ -150,8 +167,32 @@
 ; RESTRICȚII (10p):
 ;  - Folosiți recursivitate pe stivă.
 (define (two-pass-merge-RL phs)
-  'your-code-here)
-
+  
+  (define (butlast lst)
+    (reverse (cdr (reverse lst)))
+    )
+  
+  (define (group-right lst)
+    (cond
+      ((null? lst) empty-ph)
+      ((null? (cdr lst)) (list (car lst)))
+      (else (append (group-right (reverse (cddr (reverse lst))))
+                    (list (merge (list-ref lst (- (length lst) 2)) (last lst)))))
+      )
+    )
+  
+  (define (fold-right-list lst)
+    (if (null? (cdr lst))
+        (car lst)
+        (merge (fold-right-list (butlast lst)) (last lst))
+        )
+    )
+  
+  (if (null? phs)
+      empty-ph
+      (fold-right-list (reverse (group-right phs)))
+      )
+  )
 
 ; TODO 7 (20p)
 ; tournament-merge : [PH] -> PH
@@ -165,21 +206,22 @@
 (define (tournament-merge phs)
   (define (merge-pairs lst)
     (cond
-      ((null? lst) '())  ; Lista goală => returnează lista goală
-      ((null? (cdr lst)) lst)  ; Un singur element => returnează acel element
+      ((ph-empty? lst) empty-ph)  ; Lista goală => returnează lista goală
+      ((ph-empty? (cdr lst)) lst)  ; Un singur element => returnează acel element
       (else (append (list (merge (car lst) (cadr lst))) (merge-pairs (cddr lst))))
       )
     )
-  
+
   (define (merge-until-one lst)
     (cond
-      ((null? lst) empty-ph)
-      ((null? (cdr lst)) (car lst))
+      ((ph-empty? lst) empty-ph)
+      ((ph-empty? (cdr lst)) (car lst))
       (else (merge-until-one (merge-pairs lst)))
       )
     )
 
-  (merge-until-one phs))
+  (merge-until-one phs)
+  )
 
 ; TODO 8 (10p)
 ; ph-del-root : PH -> PH | Bool
@@ -188,4 +230,8 @@
 ;      ph' rezultat în urma ștergerii root(ph), altfel
 ;      - fiii root(ph) sunt uniți prin two-pass-merge-LR
 (define (ph-del-root ph)
-  'your-code-here)
+  (if (null? ph)
+      #f
+      (two-pass-merge-LR (cdr ph))
+      )
+  )
