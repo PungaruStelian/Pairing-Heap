@@ -76,7 +76,7 @@
                      (list '(m*a*s*h . 7)))))
 
 (exercițiul 2 : 10 puncte)
-; ph-insert
+;; ph-insert
 ;(check-part 'ph-insert-a (/ 1 40) (ph-insert merge-max 2 '()) is '(2))
 ;(check-part 'ph-insert-b (/ 1 40) (ph-insert merge-max 1 '(4)) is '(4 (1)))
 ;(check-part 'ph-insert-c (/ 1 40) (ph-insert merge-min 1 '(4)) is '(1 (4)))

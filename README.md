@@ -22,7 +22,7 @@ We will represent a pairing heap as a list:
 * empty, if the heap contains no elements
 * `(root child_1 child_2 ... child_n)`, otherwise, where each child is also a PH
 
-## Operations to Implement
+## Stage 1
 
 ### Constructors and Operators (15p)
 * `empty-ph`: the empty PH
@@ -129,6 +129,140 @@ Example:
 * `(ph-del-root ph)`: returns the PH obtained after deleting the root of ph
   * the children of the deleted node are merged using two-pass-merge-LR
   * returns `false` if the PH is empty
+
+## Stage 2
+
+In this stage, you will abstract the operators of the PH type so that they can manipulate min-PHs, max-PHs, and generally PHs based on any ordering relation between the values stored in nodes.
+
+* Since the ordering criterion is only used in the `merge` function, you will define a more general function `merge-f` that compares the roots of two PHs according to a criterion passed as a parameter. From this function, you will derive particular types of merge:
+  * `merge-max` - for max-PHs
+  * `merge-min` - for min-PHs
+  * other variants of `merge` explicitly requested in the assignment or in helper functions for other functions
+
+* Since the `merge` function is called directly or indirectly by other operators of the PH type, these will also need to be abstracted - modified to take the type of `merge` as a parameter.
+
+In the following stages, you will use heaps for processing movies. Therefore, in the second part of this stage we define the `movie` structure, which stores information about a film in 5 fields titled `name`, `rating`, `genre`, `duration`, `others`. The file `tutorial.rkt` will provide examples of defining and manipulating structures.
+
+You will then implement a series of functions dedicated to movies:
+
+* `(lst->movie lst)` - constructor of the `movie` structure that takes as parameter a list with 5 values, not 5 separate values
+* `(mark-as-seen m)` - adds the information 'seen' at the beginning of the (list) `others` field of the movie `m`
+* `(mark-as-seen-from-list movies seen)` - in the list of movies `movies`, marks as seen the movies from the list of names `seen`
+  * Example:
+    ```racket
+    (mark-as-seen-from-list
+      (list (make-movie 'a 9.3 'drama '(2 12) '())
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel)))
+      '(a c))
+    ```
+    * This adds the information 'seen' in the `others` field of movies 'a' and 'c' ⇒
+    ```racket
+    '((movie 'a 9.3 'drama '(2 12) '(seen))
+      (movie 'b 8.2 'comedy '(1 56) '(feel-good))
+      (movie 'c 8.8 'drama '(1 44) '(seen old))
+      (movie 'd 8.0 'thriller '(2 25) '())
+      (movie 'e 8.1 'action '(2 19) '(sequel)))
+    ```
+
+* `(extract-seen movies)` - extracts the names of seen movies from the list of movies `movies`
+  * Example:
+    ```racket
+    (extract-seen
+      (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel))))
+    ```
+    * ⇒ '(a c) (note that it returns a list of names, not a list of movies)
+    * Note that the 'seen' information can appear at any position in the `others` field
+
+* `(rating-stats movies)` - calculates a pair with the average rating of seen movies and of unwatched movies (by convention, if there are no movies of a certain type, the average rating of those is 0)
+  * Example:
+    ```racket
+    (rating-stats
+      (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel))))
+    ```
+    * ⇒ '(9.05 . 8.1) (note that the result is a pair with a dot, not a list)
+
+* `(extract-name-rating movies)` - transforms a list of movies into a list of pairs between the name and rating of the movie, discarding the other information
+  * Example:
+    ```racket
+    (extract-name-rating
+      (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel))))
+    ```
+    * ⇒ '((a . 9.3) (b . 8.2) (c . 8.8) (d . 8.0) (e . 8.1))
+
+* `(make-rating-ph movies)` - constructs a max-PH containing name-rating pairs corresponding to the movies in the list `movies`, ordered by rating
+  * The order of inserting values into the PH is from right to left
+  * Example:
+    ```racket
+    (make-rating-ph
+      (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel))))
+    ```
+    * 'e is inserted ⇒ '((e . 8.1))
+    * 'd is inserted, which becomes 'e's child because it has a lower rating ⇒ '((e . 8.1) ((d . 8.0)))
+    * 'c is inserted, which becomes 'e's parent because it has a higher rating ⇒ '((c . 8.8) ((e . 8.1) ((d . 8.0))))
+    * 'b is inserted, which becomes 'c's child because it has a lower rating ⇒ '((c . 8.8) ((b . 8.2)) ((e . 8.1) ((d . 8.0))))
+    * 'a is inserted, which becomes 'c's parent because it has a higher rating ⇒ '((a . 9.3) ((c . 8.8) ((b . 8.2)) ((e . 8.1) ((d . 8.0)))))
+
+* `(before? a b L)` - returns true if and only if a = b or a appears before b in list L
+  * It is not necessary for a and b to appear in list L
+  * If only a appears, the result is true
+  * If only b appears or neither appears (and they are not equal), the result is false
+
+* `(make-genre-ph movies genres)` - constructs a PH containing movies from the list `movies`, ordered by preferences expressed in the list of genres `genres` - the genre of a child node cannot appear before the genre of the parent node in the list `genres`
+  * As usual, insertion is done from right to left
+  * Example:
+    ```racket
+    (make-genre-ph
+      (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+            (make-movie 'b 8.2 'comedy '(1 56) '(feel-good))
+            (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+            (make-movie 'd 8.0 'thriller '(2 25) '())
+            (make-movie 'e 8.1 'action '(2 19) '(sequel)))
+      '(drama comedy action))
+    ```
+    * 'e is inserted
+    * 'd is inserted, which becomes 'e's child since 'action' appears in the preference list but 'thriller' does not
+    * 'c is inserted, which becomes 'e's parent since 'drama' precedes 'action'
+    * 'b is inserted, which becomes 'c's child since 'drama' precedes 'comedy'
+    * 'a is inserted, which becomes 'c's child since the insertion is a merge between the previous result and the new value, and for equal values (both films have the genre 'drama'), the `before?` function returns true, preferring the first root (the same principle used by the `merge` function)
+    * ⇒ 
+    ```racket
+    (list (movie 'c 8.8 'drama '(1 44) '(legal seen old))
+          (list (movie 'a 9.3 'drama '(2 12) '(seen)))
+          (list (movie 'b 8.2 'comedy '(1 56) '(feel-good)))
+          (list (movie 'e 8.1 'action '(2 19) '(sequel))
+                (list (movie 'd 8.0 'thriller '(2 25) '()))))
+    ```
+
+The exercises highlight the fact that, in functional programming, functions are first-class values. The purpose of this stage is to consolidate knowledge related to:
+
+* functionals (some tasks require working with functionals instead of using explicit recursion)
+* anonymous functions (although you have freedom regarding their use, we recommend using anonymous functions as parameters for functionals when those functions are not needed elsewhere)
+* curry and uncurry functions (you will use the currying mechanism to easily derive various types of merge from a more general function)
+
+### Point Deductions for Not Meeting Requirements
+
+The scale of possible point deductions in stage 2 is:
+* -5p*n: where n = the number of functions among `merge-max`, `merge-min`, `merge-max-rating` that are not defined point-free by partial application of `merge-f`
+* -10p*n: where n = the number of functions among `lst->movie`, `mark-as-seen-from-list`, `extract-seen`, `rating-stats`, `extract-name-rating`, `before?` solved without using functionals (according to requirements) instead of explicit recursion
 
 ## Notes
 
