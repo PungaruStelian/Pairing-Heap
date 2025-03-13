@@ -93,6 +93,14 @@
     )
 )
 
+(define (member? x lst)
+    (cond
+        ((null? lst) #f)
+        ((equal? x (car lst)) #t)
+        (else (member? x (cdr lst)))
+    )
+)
+
 ; TODO 1 (15p)
 ; Definiți funcția merge-f în formă curry, 
 ; astfel încât ulterior să definiți point-free
@@ -231,7 +239,7 @@
 ; RESTRICȚII (10p):
 ;  - Nu identificați elementele listei, ci folosiți o funcțională.
 (define (lst->movie lst)
-  'your-code-here)
+  (apply make-movie lst))
 
 ; TODO 4 (10p)
 ; mark-as-seen : Movie -> Movie
@@ -239,7 +247,9 @@
 ; out: m actualizat astfel încât symbolul 'seen este
 ;      adăugat la începutul câmpului (listei) others
 (define (mark-as-seen m)
-  'your-code-here)
+    (define mov2 (struct-copy movie m (others (append '(seen) (movie-others m)))))
+    mov2
+)
 
 ; TODO 5 (10p)
 ; mark-as-seen-from-list : [Movie] x [Symbol] -> [Movie]
@@ -250,7 +260,15 @@
 ;  - Nu folosiți recursivitate explicită.
 ;  - Folosiți cel puțin o funcțională.
 (define (mark-as-seen-from-list movies seen)
-  'your-code-here)
+    (map (lambda (movie)
+            (if (member? (movie-name movie) seen)
+               (mark-as-seen movie)
+               movie
+            )
+         )
+         movies
+    )
+)
 
 ; TODO 6 (10p)
 ; extract-seen : [Movie] -> [Symbol]
@@ -262,7 +280,16 @@
 ;  - Nu folosiți funcționale de tip fold.
 ;  - Folosiți cel puțin o funcțională.
 (define (extract-seen movies)
-  'your-code-here)
+    (apply append (map (lambda (movie)
+                            (if (member? 'seen (movie-others movie)) ; nu conteaza unde apare seen
+                                (list (movie-name movie))
+                                empty-ph
+                            )
+                        )
+                        movies
+                  )
+    )
+)
 
 ; TODO 7 (15p)
 ; rating-stats : [Movie] -> (Number, Number)
