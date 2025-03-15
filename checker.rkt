@@ -2,7 +2,6 @@
 
 (require "etapa2.rkt")
 
-
 ; ignorați următoarele linii de cod...
 (define show-defaults 999) ; câte exerciții la care s-au întors rezultate default să fie arătate detaliat
 (define prepend #t) (define nopoints #f) (define name-ex '(testul testele trecut capitolul))
@@ -216,7 +215,6 @@
              m5
              m6
              (make-movie 'the-lives-of-others 10  'drama    '(2 17) '(seen german))))
-
 
 
 (exercițiul 6 : 10 puncte)

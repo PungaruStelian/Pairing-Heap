@@ -123,9 +123,9 @@
 ;     (la egalitate, ph2 devine fiul lui ph1)
 ; Keep the original merge-f function
 (define merge-f 
-    (lambda (comp) 
-        (lambda (ph1) 
-            (lambda (ph2) 
+    (λ (comp) 
+        (λ (ph1) 
+            (λ (ph2) 
                 (cond 
                     ((null? ph1) ph2)
                     ((null? ph2) ph1)
@@ -144,8 +144,8 @@
 ; RESTRICȚII (5p): 
 ; - Definiția trebuie să fie point-free.
 (define merge-max
-    (lambda (ph1 ph2)
-        (((merge-f (lambda (a b) (< a b))) ph1) ph2)
+    (λ (ph1 ph2)
+        (((merge-f (λ (a b) (< a b))) ph1) ph2)
     )
 )
 
@@ -156,8 +156,8 @@
 ; RESTRICȚII (5p): 
 ; - Definiția trebuie să fie point-free.
 (define merge-min
-    (lambda (ph1 ph2)
-        (((merge-f (lambda (a b) (> a b))) ph1) ph2)
+    (λ (ph1 ph2)
+        (((merge-f (λ (a b) (> a b))) ph1) ph2)
     )
 )
 
@@ -170,8 +170,8 @@
 ; RESTRICȚII (5p): 
 ; - Definiția trebuie să fie point-free.
 (define merge-max-rating
-    (lambda (ph1 ph2)
-        (((merge-f (lambda (a b) (< (cdr a) (cdr b)))) ph1) ph2)
+    (λ (ph1 ph2)
+        (((merge-f (λ (a b) (< (cdr a) (cdr b)))) ph1) ph2)
     )
 )
 
@@ -260,7 +260,7 @@
 ;  - Nu folosiți recursivitate explicită.
 ;  - Folosiți cel puțin o funcțională.
 (define (mark-as-seen-from-list movies seen)
-    (map (lambda (movie)
+    (map (λ (movie)
             (if (member? (movie-name movie) seen)
                (mark-as-seen movie)
                movie
@@ -280,7 +280,7 @@
 ;  - Nu folosiți funcționale de tip fold.
 ;  - Folosiți cel puțin o funcțională.
 (define (extract-seen movies)
-    (apply append (map (lambda (movie)
+    (apply append (map (λ (movie)
                             (if (member? 'seen (movie-others movie)) ; nu conteaza unde apare seen
                                 (list (movie-name movie))
                                 empty-ph
@@ -304,7 +304,36 @@
 ;  - Nu parcurgeți filmele din listă (sau părți ale listei)
 ;    mai mult decât o dată.
 (define (rating-stats movies)
-  'your-code-here)
+    (define totals
+        (foldl
+            (λ (m acc)
+                (if (member? 'seen (movie-others m))
+                    (list (+ (car acc) (movie-rating m))
+                          (+ (cadr acc) 1)
+                          (caddr acc)
+                          (cadddr acc)
+                    )
+                    (list (car acc)
+                          (cadr acc)
+                          (+ (caddr acc) (movie-rating m))
+                          (+ (cadddr acc) 1)
+                    )
+                )
+            )
+            (list 0 0 0 0) movies
+        )
+    )
+
+    (cons (if (= (cadr totals) 0)
+            0
+            (/ (car totals) (cadr totals))
+          )
+        (if (= (cadddr totals) 0)
+            0
+            (/ (caddr totals) (cadddr totals))
+        )
+    )
+)
 
 ; TODO 8 (10p)
 ; extract-name-rating : [Movie] -> [(Symbol, Number)]
@@ -315,7 +344,12 @@
 ;  - Nu folosiți recursivitate explicită.
 ;  - Folosiți cel puțin o funcțională.
 (define (extract-name-rating movies)
-  'your-code-here)
+    (map (λ (m)
+            (cons (movie-name m) (movie-rating m))
+         )
+         movies
+    )
+)
 
 ; TODO 9 (10p)
 ; make-rating-ph : [Movie] -> PH
@@ -327,7 +361,13 @@
 ;  - ...
 ;  - se inserează prima pereche în PH-ul de până acum
 (define (make-rating-ph movies)
-  'your-code-here)
+    (foldr (λ (m ph)
+            (ph-insert merge-max-rating (cons (movie-name m) (movie-rating m)) ph)
+            )
+            empty-ph
+            movies
+    )
+)
 
 ; TODO 10 (10p)
 ; before? : T1 x T2 x List
@@ -340,7 +380,10 @@
 ;  - Identificați în Help Desk funcționala findf
 ;    și folosiți-o.
 (define (before? a b L)
-  'your-code-here)
+    (or (equal? a b)
+        (equal? (findf (λ (x) (or (equal? x a) (equal? x b))) L) a)
+    )
+)
 
 ; TODO 11 (10p)
 ; make-genre-ph : [Movie] x [Symbol] -> PH
@@ -356,4 +399,30 @@
 ; gen cu root-ul curent, noul film devine fiul
 ; root-ului 
 (define (make-genre-ph movies genres)
-  'your-code-here)
+  (let ((genre-merge
+         (lambda (ph1 ph2)
+           (cond
+             ((null? ph1) ph2)
+             ((null? ph2) ph1)
+             (else
+              (let* ((g1 (movie-genre (car ph1)))
+                     (g2 (movie-genre (car ph2)))
+                     (g1-in-genres (member g1 genres))
+                     (g2-in-genres (member g2 genres)))
+                (cond
+                  ((equal? g1 g2)
+                   (append (list (car ph1)) (list ph2) (cdr ph1)))
+                  ((and g1-in-genres g2-in-genres)
+                   (if (before? g1 g2 genres)
+                       (append (list (car ph1)) (list ph2) (cdr ph1))
+                       (append (list (car ph2)) (list ph1) (cdr ph2))))
+                  (g1-in-genres
+                   (append (list (car ph1)) (list ph2) (cdr ph1)))
+                  (g2-in-genres
+                   (append (list (car ph2)) (list ph1) (cdr ph2)))
+                  (else
+                   (append (list (car ph2)) (list ph1) (cdr ph2))))))))))
+    (foldr (λ (m ph)
+             (ph-insert genre-merge m ph))
+           empty-ph
+           movies)))
