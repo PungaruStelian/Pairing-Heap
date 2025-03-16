@@ -264,7 +264,7 @@ The scale of possible point deductions in stage 2 is:
 * -5p*n: where n = the number of functions among `merge-max`, `merge-min`, `merge-max-rating` that are not defined point-free by partial application of `merge-f`
 * -10p*n: where n = the number of functions among `lst->movie`, `mark-as-seen-from-list`, `extract-seen`, `rating-stats`, `extract-name-rating`, `before?` solved without using functionals (according to requirements) instead of explicit recursion
 
-## Notes
+### Notes
 
 1. You must respect the recursion type requirements:
    * Stack recursion for `list->ph` and `two-pass-merge-RL`
@@ -273,6 +273,135 @@ The scale of possible point deductions in stage 2 is:
 2. Use the PH interface (constructors and operators), not equivalent list functions.
 
 3. You can define helper functions if needed. The same recursion type restrictions apply to them.
+
+## Stage 3: Heap Operations
+
+In this stage, you will implement two applications of priority heaps:
+- Extracting the first k elements from a list according to a specific sorting criterion
+- Merging values contained in multiple PHs
+
+Specifically, you will implement specialized versions of these two applications dedicated to movies, as defined in stage 2. Note that at the beginning of the stage3.rkt file, there is a line (require "etapa2.rkt") indicating that it will be necessary to resolve stage 2 in the same folder where you solved stage 3, to benefit from previously implemented functions.
+
+Important considerations for implementation and expression binding:
+- Use `let` or `let*` to avoid duplicate calculations
+- Use `named let` for ad-hoc implementation of recursive processes without helper functions
+
+You need to implement the following functions:
+
+### `best-k`
+A function that takes a comparison criterion op, a list of movies, and a number k, in an order and grouping defined by you (the function's antetypes are not specified), and determines the first k movies from the movies list according to the op criterion.
+- The result should be obtained using a PH built based on the movies list and op criterion
+- Initialize an empty PH, insert the final result after k successive extractions
+- The best-k function is not checked by the checker, but should provide the foundation for the best-k-rating and best-k-duration functions, which are checked
+
+### `best-k-rating`
+Determines the best k movies from a list, from the perspective of their rating.
+
+Example:
+```racket
+(best-k-rating
+ (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+       (make-movie 'b 8.2 'comedy '(1 56) '(feel good))
+       (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+       (make-movie 'd 8.0 'thriller '(2 25) '())
+       (make-movie 'e 8.1 'action '(2 19) '(sequel)))
+ 4)
+```
+Returns:
+```racket
+(list
+ (movie 'a 9.3 'drama '(2 12) '(seen))
+ (movie 'c 8.8 'drama '(1 44) '(legal seen old))
+ (movie 'b 8.2 'comedy '(1 56) '(feel good))
+ (movie 'e 8.1 'action '(2 19) '(sequel)))
+```
+
+### `best-k-duration`
+Determines the shortest k movies from a list.
+
+Example:
+```racket
+(best-k-duration
+ (list (make-movie 'a 9.3 'drama '(2 12) '(seen))
+       (make-movie 'b 8.2 'comedy '(1 56) '(feel good))
+       (make-movie 'c 8.8 'drama '(1 44) '(legal seen old))
+       (make-movie 'd 8.0 'thriller '(2 25) '())
+       (make-movie 'e 8.1 'action '(2 19) '(sequel)))
+ 3)
+```
+
+Returns:
+```racket
+(list
+ (movie 'c 8.8 'drama '(1 44) '(legal seen old))
+ (movie 'b 8.2 'comedy '(1 56) '(feel-good))
+ (movie 'a 9.3 'drama '(2 12) '(seen)))
+```
+### `(update-pairs p pairs)`
+Delete the pH root of the first pair that satisfies the predicate `
+
+- Each pair of PAIRS contains a movie name and a max-fo rats to the film by various users
+- If no ratings are stored for the movie in the targeted pair (the associated pH is VID), then the unchanged `pears list returns
+- If no pair satisfies the predicate P, the unchanged PAIRS list returns
+
+Example:
+``` Racket
+(update-pairs
+ (λ (p) #t)
+ '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
+   (b 10 (9) (6) (8) (9) (8) (7 (7)))
+   (c 10 (8) (10 (8) (7) (9) (8) (6)))))
+```
+- All pairs satisfy the predicate, so the pH root of the first pair will be wiped
+- As the pairs have a pH on the second position, ie a list, they do not display as pairs with a point, but as lists that have the first position of the film, and the rest of the list corresponds to the pH
+
+Return:
+``` Racket
+'((a 10 (9) (8) (9 (7) (9 (8))))      ; here the root was deleted here
+  (b 10 (9) (6) (8) (9) (8) (7 (7)))
+  (c 10 (8) (10 (8) (7) (9) (8) (6))))
+```
+### `(Best-K-Iratings-Overall Pairs K)`
+Determines the best k reviews (in pairs with the film to which they were awarded), based on a PAIRS list of the type above (pairs (name-film. pH-with-ranges))
+
+- The result is a list of pairs (name-film.
+rating) and is obtained by interclaining the pH corresponding to each movie, as follows:
+- a new pH with pairs (name-philam. rating) corresponding to the roots of each pH in `peaches is initialized- we will call it the pH of roots
+- invariant: the root of the pH of roots corresponds to the best review overall
+- at each iteration,
+This root is extracted and brought to the pH of roots the next best rating corresponding to the film that has just been extracted (to maintain the invariant)
+
+Example:
+``` Racket
+(best-k-ratings-overall 
+ '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
+   (b 10 (9) (6) (8) (9) (8) (7 (7)))
+   (c 10 (8) (10 (8) (7) (9) (8) (6))))
+ 7)
+```
+
+-
+The pH of roots with pairs' (a. 10), '(b. 10),' (c. 10) ⇒ is initialized
+one of them becomes a root, for example '(c. 10)
+- Following its extraction '(c. 10), another one is brought (c. 10) instead of it (as there is a rating 10 for the film c) ⇒
+We have the same values ​​in the pH of roots, and the new root is, for example,
+'(a. 10)
+- is extracted '(a. 10), in its place being brought a new' (a. 10), and the new root is' (c. 10)
+- is extracted '(c. 10), in its place being brought a' (c. 9), and the new root is' (a. 10)
+- is extracted '(a. 10), in its place being brought a' (a. 9), and the new root is' (b. 10)
+- is extracted '(b. 10),
+in its place being brought a '(b. 9), and the new root is' (a. 9)
+- is extracted '(a. 9), in its place being brought a new' (a. 9), and the new root is' (b. 9)
+- Extraction of '(b. 9) is the seventh extraction ⇒
+'((c. 10) (a. 10) (c. 10) (a. 10) (b. 10) (a. 9) (b. 9))
+- Note: Checker-
+UL also accepts other correct results (the same rats but in pairs with other movies, as long as the respective pairs match some input reviews)
+### Deductions for Not Following Assignment Requirements
+
+Possible point deductions in stage 3:
+- `-5p*n`: where n = number of functions between best-k-rating, best-k-duration that are not defined as applications of best-k
+- `-20p*n`: where n = number of functions between best-k, update-pairs, best-k-ratings-overall resolved without using named let as required
+- `-0p`: We encourage using let and let* to avoid duplicate calculations, even if there are no deductions related to this aspect
 
 ## Testing
 
