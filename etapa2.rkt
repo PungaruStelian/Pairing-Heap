@@ -116,14 +116,12 @@
 ; Keep the original merge-f function
 (define merge-f 
     (λ (comp) 
-        (λ (ph1) 
-            (λ (ph2) 
-                (cond 
-                    ((ph-empty? ph1) ph2)
-                    ((ph-empty? ph2) ph1)
-                    ((comp (car ph1) (car ph2)) (append (list (car ph2)) (list ph1) (cdr ph2)))
-                    (else (append (list (car ph1)) (list ph2) (cdr ph1)))
-                )
+        (λ (ph1 ph2)
+            (cond 
+                ((ph-empty? ph1) ph2)
+                ((ph-empty? ph2) ph1)
+                ((comp (car ph1) (car ph2)) (append (list (car ph2)) (list ph1) (cdr ph2)))
+                (else (append (list (car ph1)) (list ph2) (cdr ph1)))
             )
         )
     )
@@ -136,9 +134,7 @@
 ; RESTRICTIONS (5p): 
 ; - The definition must be point-free.
 (define merge-max
-    (λ (ph1 ph2)
-        (((merge-f (λ (a b) (< a b))) ph1) ph2)
-    )
+        (merge-f <)
 )
 
 ; merge-min : PH x PH -> PH 
@@ -148,9 +144,7 @@
 ; RESTRICTIONS (5p): 
 ; - The definition must be point-free.
 (define merge-min
-    (λ (ph1 ph2)
-        (((merge-f (λ (a b) (> a b))) ph1) ph2)
-    )
+    (merge-f >)
 )
 
 ; merge-max-rating : PH x PH -> PH 
@@ -162,9 +156,8 @@
 ; RESTRICTIONS (5p): 
 ; - The definition must be point-free.
 (define merge-max-rating
-    (λ (ph1 ph2)
-        (((merge-f (λ (a b) (< (cdr a) (cdr b)))) ph1) ph2)
-    )
+    ; still point-free is because it is directly used to merge-f which is not point-free
+    (merge-f (λ (a b) (< (cdr a) (cdr b))))
 )
 
 ; TODO 2 (10p)
