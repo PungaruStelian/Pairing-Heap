@@ -34,28 +34,29 @@
 ;  - Use named let to perform step 2 of the
 ;    algorithm.
 (define (best-k op movies k)
-  ; Create custom merge function for this comparison operation
-  (define merge-custom 
-    (lambda (ph1 ph2)
-      (cond
-        [(ph-empty? ph1) ph2]
-        [(ph-empty? ph2) ph1]
-        [(op (ph-root ph1) (ph-root ph2)) (append (list (ph-root ph1)) (list ph2) (ph-subtrees ph1))]
-        [else (append (list (ph-root ph2)) (list ph1) (ph-subtrees ph2))])))
-  
-  ; Build initial heap using fold-right
-  (define movies-heap
-    (foldr (lambda (movie ph) (merge-custom (val->ph movie) ph)) empty-ph movies))
-  
-  ; Extract k elements or until heap is empty
-  (let extract-k ([heap movies-heap]
-                 [result '()]
-                 [count 0])
-    (cond
-      [(or (ph-empty? heap) (= count k)) result]
-      [else (extract-k (ph-del-root merge-custom heap)
-                      (append result (list (ph-root heap)))
-                      (+ count 1))])))
+    ; start from the empty list and at every step combine a movie with the accumulator using the OP function
+    (define make-sorted-ph-of-movies
+        (foldl (λ (movie ph) 
+                (ph-insert (merge-f op) movie ph)
+                )
+                empty-ph
+                movies
+        )
+    )
+    ; only solution for named let
+    (let extract-k ((ph make-sorted-ph-of-movies)
+                        (result '())
+                        (cnt 0)
+                        )
+        (if (or (ph-empty? ph) (= cnt k))
+            result
+            (extract-k (ph-del-root (merge-f op) ph)
+                            (append result (list (ph-root ph)))
+                            (+ cnt 1)
+            )
+        )
+    )
+)
 
 ; best-k-rating : [Movie] x Int -> [Movie]
 ; in: list of movies movies, number k
@@ -63,7 +64,10 @@
 ; RESTRICTIONS (5p):
 ;  - Obtain best-k-rating as an application of best-k.
 (define (best-k-rating movies k)
-  (best-k (lambda (m1 m2) (>= (movie-rating m1) (movie-rating m2))) movies k))
+    (best-k (λ (m1 m2) 
+               (< (movie-rating m1) (movie-rating m2)))
+            movies
+            k))
 
 ; best-k-duration : [Movie] x Int -> [Movie]
 ; in: list of movies movies, number k
@@ -71,12 +75,18 @@
 ; RESTRICTIONS (5p):
 ;  - Obtain best-k-duration as an application of best-k.
 (define (best-k-duration movies k)
-  (best-k 
-   (lambda (m1 m2)
-     (let ([duration1 (+ (* 60 (car (movie-duration m1))) (cadr (movie-duration m1)))]
-           [duration2 (+ (* 60 (car (movie-duration m2))) (cadr (movie-duration m2)))])
-       (<= duration1 duration2)))
-   movies k))
+    (define (seconds m) 
+        (+ (* 60 (car (movie-duration m))) (cadr (movie-duration m)))
+    )
+    
+    (best-k 
+        (λ (m1 m2)
+            (> (seconds m1) (seconds m2))
+        )
+    movies
+    k
+    )
+)
 
 
 ; TODO 2 (30p)
@@ -94,26 +104,27 @@
 ; RESTRICTIONS (20p):
 ;  - Use named let to iterate through pairs.
 (define (update-pairs p pairs)
-  (let loop ([current pairs]
-             [processed '()])
-    (cond
-      ; End of list, no match found
-      [(null? current) pairs]
-      ; Test current pair
-      [(p (car current))
-       (let* ([pair (car current)]
-              [name (car pair)]
-              [ratings (cdr pair)]
-              [updated-ratings (ph-del-root merge-max ratings)])
-         (if updated-ratings
-             ; Found valid pair to update - reconstruct the list with updated pair
-             (append (reverse processed) 
-                     (cons (cons name updated-ratings) (cdr current)))
-             ; If PH is empty after deleting root, return unchanged list
-             pairs))]
-      ; Continue with next pair
-      [else (loop (cdr current) (cons (car current) processed))])))
-                  
+    (let loop ((curr pairs) (acc '()))
+        (cond
+            ; finished
+            ((null? curr) acc)
+            ((p (car curr))
+                (define pair (car curr)) ; name . PH of ratings
+                (define ratings (cdr pair)) ; PH
+                (if (or (null? ratings) (ph-empty? ratings))
+                    ; return unchanged list
+                    (append acc curr)
+                    ; build the updated list
+                    (append acc 
+                        (list (append (list (car pair)) (ph-del-root merge-max ratings))) (cdr curr))
+                )
+            )
+            ; cdr curr is the rest of the pairs
+            (else (loop (cdr curr) (append acc (list (car curr)))))
+        )
+    )
+)
+
 
 ; TODO 3 (50p)
 ; best-k-ratings-overall : [(Symbol, PH)] x Int
@@ -139,54 +150,57 @@
 ;  - Use named let to perform step 2 of the
 ;    algorithm.
 (define (best-k-ratings-overall pairs k)
-  ; Skip empty pairs or pairs with empty PH
-  (define valid-pairs 
-    (filter (lambda (p) (and (not (null? p)) (not (ph-empty? (cdr p))))) pairs))
+    ; filter valid pairs (who have non-empthy heaps)
+    (define valid-pairs 
+        (filter (λ (p) (and (not (null? p)) (not (ph-empty? (cdr p))))) pairs)
+    )
   
-  ; Build initial heap of best ratings
-  (define initial-ph
-    (foldl (lambda (pair ph)
-             (let* ([name (car pair)]
-                    [ratings-ph (cdr pair)]
-                    [best-rating (ph-root ratings-ph)]
-                    [name-rating (cons name best-rating)])
-               (merge-max-rating ph (val->ph name-rating))))
-           empty-ph
-           valid-pairs))
+    ; build the initial heap with the best ratings
+    (define initial-ph
+        (foldl (λ (pair ph)
+            (ph-insert merge-max-rating (append (list (car pair)) (ph-root (cdr pair))) ph)
+                )
+                empty-ph
+                valid-pairs
+        )
+    )
   
-  ; Build lookup table for quick access to ratings by film name
-  (define ratings-table
-    (foldl (lambda (pair table)
-             (hash-set table (car pair) (cdr pair)))
-           (hash)
-           valid-pairs))
-  
-  ; Extract k best ratings
-  (let extract-k ([ph initial-ph]
-                  [result '()]
-                  [count 0]
-                  [pairs-map ratings-table])
-    (cond
-      ; We have k results or the heap is empty
-      [(or (= count k) (ph-empty? ph)) result]
-      [else
-       (let* ([best-pair (ph-root ph)]
-              [name (car best-pair)]
-              [rating (cdr best-pair)]
-              [remaining-ph (ph-del-root merge-max-rating ph)]
-              [film-ratings (hash-ref pairs-map name #f)]
-              [updated-film-ratings (and film-ratings (ph-del-root merge-max film-ratings))]
-              [next-ph (if (and updated-film-ratings (not (ph-empty? updated-film-ratings)))
-                           (merge-max-rating 
-                            remaining-ph 
-                            (val->ph (cons name (ph-root updated-film-ratings))))
-                           remaining-ph)]
-              [next-map (if updated-film-ratings
-                            (hash-set pairs-map name updated-film-ratings)
-                            pairs-map)])
-         (extract-k next-ph
-                    (append result (list best-pair)) 
+    ; extract the best k ratings
+    (let extract-k ((ph initial-ph)
+                    (result '())
+                    (count 0)
+                    (current-pairs valid-pairs)
+                    )
+        (cond
+            ((or (= count k) (ph-empty? ph)) result)
+            (else
+                (define best-pair (ph-root ph))
+                (define name (car best-pair))
+                (define remaining-ph (ph-del-root merge-max-rating ph))
+                ; update the pairs for this movie
+                (define updated-pairs 
+                    (update-pairs (λ (p) (equal? (car p) name)) current-pairs)
+                )
+                ; find the updated pair for the movie
+                (define updated-movie-pair 
+                    (findf (λ (p) (equal? (car p) name)) updated-pairs)
+                )
+                ; extract the updated movie ratio for the movie
+                (define next-rating-ph 
+                    (and updated-movie-pair (cdr updated-movie-pair))
+                )
+                (extract-k 
+                ; add the following rating to the heap if there
+                    (if (and next-rating-ph (not (ph-empty? next-rating-ph)))
+                        (ph-insert merge-max-rating 
+                            (append (list name) (ph-root next-rating-ph))
+                                remaining-ph)
+                        remaining-ph)
+                    (append result (list best-pair))
                     (+ count 1)
-                    next-map))]))
+                    updated-pairs
+                )
+            )
+        )
+    )
 )
-
