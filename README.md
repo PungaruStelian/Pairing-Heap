@@ -425,12 +425,13 @@ The novelty of the stage consists of working with **flows**:
 - Each new review corresponds to a moment of time t, and for each time T time we will submit a `stage` in the resulting flow - the information about how much the medias were at the time t
 
 You have to implement the following functions:
-
-* `(add-rating quad rating)` - receives a type quartet (name-Film Delta Max-Uph Min-Ph) and a rating, and returns updated quartet by inserting the rating in the related pH and rebalancing the pH
-
+```racket
+(add-rating quad rating) ; receives a type quartet (name-Film Delta Max-Uph Min-Ph) and a rating, and returns updated quartet by inserting the rating in the related pH and rebalancing the pH
+```
 Ex:
->(Add-Stating '(A 0 (4) (7)) 5)
-
+```racket
+(Add-Stating '(A 0 (4) (7)) 5)
+```
 - whereas 5> 4 (rating> root (max -ph)), 4 is inserted in min -ph ⇒
 '(A -1 (4) (5 (7)))
 
@@ -440,8 +441,9 @@ Ex:
 * `(reviews->quads reviews)` - transforms a flow of reviews (review = pair (name-film. rating)) into a stages flow (stage = quartet list: a quartet for each movie that has received reviews so far)
 
 Ex:
->(reviews->quads (stream '(a . 4) '(b . 1) '(a . 2)))
-
+```racket
+(reviews->quads (stream '(a . 4) '(b . 1) '(a . 2)))
+```
 - At first we have no information about any movie
 
 - At time t = 1, we have to add rating 4 for the movie 'a ⇒
@@ -461,9 +463,9 @@ The quartet is updated for the movie 'A by adding the rating 2 ⇒
 * `(quads->medians quads)` - transforms a stages flow represented using quartets into a stages flow represented using median
 
 Ex:
-
->(quads->medians (reviews->quads (stream '(a . 4) '(b . 1) '(a . 2))))
-
+```racket
+(quads->medians (reviews->quads (stream '(a . 4) '(b . 1) '(a . 2))))
+```
 - Quartets list **'((A 1 (4) ()))** becomes the list of pairs' **((a. 4))**
 (for the movie 'a, the median coincides with the only rating received)
 
