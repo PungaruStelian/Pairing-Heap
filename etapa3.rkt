@@ -45,15 +45,11 @@
     )
     ; only solution for named let
     (let extract-k ((ph make-sorted-ph-of-movies)
-                        (result '())
-                        (cnt 0)
-                        )
-        (if (or (ph-empty? ph) (= cnt k))
+                    (result '()))
+        (if (or (ph-empty? ph) (= (length result) k))
             result
             (extract-k (ph-del-root (merge-f op) ph)
-                            (append result (list (ph-root ph)))
-                            (+ cnt 1)
-            )
+                    (append result (list (ph-root ph))))
         )
     )
 )
@@ -67,7 +63,9 @@
     (best-k (λ (m1 m2) 
                (< (movie-rating m1) (movie-rating m2)))
             movies
-            k))
+            k
+    )
+)
 
 ; best-k-duration : [Movie] x Int -> [Movie]
 ; in: list of movies movies, number k
@@ -79,12 +77,11 @@
         (+ (* 60 (car (movie-duration m))) (cadr (movie-duration m)))
     )
     
-    (best-k 
-        (λ (m1 m2)
-            (> (seconds m1) (seconds m2))
-        )
-    movies
-    k
+    (best-k (λ (m1 m2)
+                (> (seconds m1) (seconds m2))
+            )
+            movies
+            k
     )
 )
 
@@ -104,19 +101,21 @@
 ; RESTRICTIONS (20p):
 ;  - Use named let to iterate through pairs.
 (define (update-pairs p pairs)
-    (let loop ((curr pairs) (acc '()))
+    ; initialization
+    (let loop ((curr pairs)
+                (acc '()))
         (cond
             ; finished
             ((null? curr) acc)
             ((p (car curr))
                 (define pair (car curr)) ; name . PH of ratings
                 (define ratings (cdr pair)) ; PH
-                (if (or (null? ratings) (ph-empty? ratings))
+                (if (ph-empty? ratings)
                     ; return unchanged list
                     (append acc curr)
-                    ; build the updated list
-                    (append acc 
-                        (list (append (list (car pair)) (ph-del-root merge-max ratings))) (cdr curr))
+                    ; build the updated list and finish recursion
+                    (append acc (list (append (list (car pair))
+                        (ph-del-root merge-max ratings))) (cdr curr))
                 )
             )
             ; cdr curr is the rest of the pairs
@@ -150,29 +149,21 @@
 ;  - Use named let to perform step 2 of the
 ;    algorithm.
 (define (best-k-ratings-overall pairs k)
-    ; filter valid pairs (who have non-empthy heaps)
-    (define valid-pairs 
-        (filter (λ (p) (and (not (null? p)) (not (ph-empty? (cdr p))))) pairs)
-    )
-  
-    ; build the initial heap with the best ratings
+    ; from pairs of name - heap of ratings, it becomes a sorted heap with all names and best ratings
     (define initial-ph
         (foldl (λ (pair ph)
             (ph-insert merge-max-rating (append (list (car pair)) (ph-root (cdr pair))) ph)
                 )
-                empty-ph
-                valid-pairs
+                empty-ph ; acc
+                pairs
         )
     )
-  
     ; extract the best k ratings
     (let extract-k ((ph initial-ph)
                     (result '())
-                    (count 0)
-                    (current-pairs valid-pairs)
-                    )
+                    (current-pairs pairs))
         (cond
-            ((or (= count k) (ph-empty? ph)) result)
+            ((or (= (length result) k) (ph-empty? ph)) result)
             (else
                 (define best-pair (ph-root ph))
                 (define name (car best-pair))
@@ -189,15 +180,17 @@
                 (define next-rating-ph 
                     (and updated-movie-pair (cdr updated-movie-pair))
                 )
-                (extract-k 
                 ; add the following rating to the heap if there
+                (extract-k
+                    ; the updated heap
                     (if (and next-rating-ph (not (ph-empty? next-rating-ph)))
+                        ; if there is a next rating, add it to the heap and sort it
                         (ph-insert merge-max-rating 
                             (append (list name) (ph-root next-rating-ph))
                                 remaining-ph)
+                        ; if there is no next rating, the heap remains the same
                         remaining-ph)
                     (append result (list best-pair))
-                    (+ count 1)
                     updated-pairs
                 )
             )
