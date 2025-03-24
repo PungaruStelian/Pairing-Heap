@@ -2,32 +2,6 @@
 (require racket/match)
 (provide (all-defined-out))
 
-; ++++ STAGE 1 ++++
-
-;; A pairing heap is an n-ary tree that 
-;; respects the heap property and efficiently implements
-;; the following operations:
-;; - insertion into the heap
-;; - deletion of the root (causing heap restructuring)
-;; - merging two heaps
-;; The heap property refers to maintaining an ordering relation
-;; between any parent node and its children:
-;; - in a min-heap, the parent's value is less than or 
-;;   equal to the values of its children
-;; - in a max-heap, the parent's value is greater than or
-;;   equal to the values of its children
-;; - a heap can be based on other ordering relations as well
-;;
-;; We will represent a pairing heap (abbreviated PH)
-;; as a list:
-;; - empty, if the heap contains no elements
-;; - (root child_1 child_2 ... child_n), otherwise
-;;   - where each child is also a PH
-;;
-;; In this stage, we implement a max-heap of pairing.
-
-; ++++ STAGE 2 ++++
-
 ;; In this stage, we abstract the operators of the PH type so that
 ;; we can easily derive operations for various variants
 ;; of PH, depending on the ordering relation on which

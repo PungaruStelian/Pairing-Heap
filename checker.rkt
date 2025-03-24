@@ -1,7 +1,6 @@
 #lang racket
 
-(require "etapa2.rkt")
-(require "etapa3.rkt")
+(require "etapa4.rkt")
 
 ; ignorați următoarele linii de cod...
 (define show-defaults 999) ; câte exerciții la care s-au întors rezultate default să fie arătate detaliat
@@ -24,149 +23,150 @@
 
 
 ; Definiții ajutătoare pentru checker.
-; Structura movie are 5 câmpuri: name, rating, genre, duration și others.
-; Convenție de nume: "ms" înseamnă că filmul a fost văzut; numărul reprezintă rating-ul.
-(define m10  (make-movie 'hundreds-of-beavers  10 'comedy    '(1 48) '(slapstick action)))
-(define m9   (make-movie '12-angry-men         9  'drama     '(1 36) '(legal)))
-(define m8   (make-movie 'manchurian-candidate 8  'thriller  '(2 06) '(spy tragedy)))
-(define m7   (make-movie 'm*a*s*h              7  'comedy    '(1 56) '(satire drama)))
-(define m6   (make-movie 'pulse-kairo          6  'horror    '(1 59) '(supernatural mystery)))
-(define m5   (make-movie 'trap                 5  'horror    '(1 45) '(crime thriller)))
-(define ms10 (make-movie 'rear-window          10 'thriller  '(1 52) '(seen drama suspense)))
-(define ms9  (make-movie 'm                    9  'thriller  '(1 39) '(seen crime mystery)))
-(define ms8  (make-movie 'menilmontant         8  'drama     '(0 38) '(seen tragedy short)))
-(define ms7  (make-movie 'neo-tokyo            7  'animation '(0 50) '(seen scifi fantasy)))
-(define ms3  (make-movie 'maniac               3  'horror    '(0 51) '(seen b-horror)))
+
+; Stream infinit.
+(define inf-stream
+  (stream-cons '(a . 7)
+               (stream-cons '(b . 8)
+                            (stream-cons '(b . 9) inf-stream))))
 
 ; Test care ignoră comparația cu un rezultat exact, pentru a testa doar condiții.
 (define just-conds (cons (lambda (_ __) #t) "this shouldn't happen?..."))
 
-; Liniarizează un PH, strângând toate valorile lui într-o listă fără imbricări.
-; ph->list : PH -> [T]
-(define (ph->list ph)
-  (if (ph-empty? ph) '()
-      (apply append (list (ph-root ph)) (map ph->list (ph-subtrees ph)))))
+; Condiție care verifică dacă un stream răspuns are elementele cerute într-o referință.
+; Față de o verificare directă, are avantajul că nu dă eroare dacă răspunsul nu este stream.
+; stream-equals? : [T] -> (X -> True | Str)
+(define (stream-equals? ref)
+  (lambda (candidate)
+    (if (not (stream? candidate))
+        "nu e un stream, așa cum e cerut"
+        (let ([candidate-list (stream->list candidate)])
+          (or (equal? candidate-list ref)
+              (format "are alte elemente decât cele cerute: ~s ~s" candidate-list ref))))))
+
+; Verifică dacă răspunsurile exercițiilor 2 și 3 sunt corecte.
+; Concret, verifică dacă un stream de liste are aceleași liste ca răspunsul corect.
+; Din moment ce ordinea elementelor în liste nu contează, listele sunt tratate ca seturi.
+; same-seq-of-sets: [[T]] -> (Stream<[T]> -> True | Str)
+(define (same-seq-of-sets ref)
+  (lambda (candidate)
+    (if (not (stream? candidate))
+        "nu e un stream, așa cum e cerut"
+        (let* ([candidate-list (stream->list candidate)]
+               [len-candidate  (length candidate-list)]
+               [len-ref        (length ref)])
+          (if (not (= len-candidate len-ref))
+              (format "nu are numărul corect de elemente: are ~s, dar așteptam ~s" len-candidate len-ref)
+              (let iter ([cc candidate-list] [rr ref] [i 1])
+                (cond
+                  [(null? cc) true]
+                  [(equal? (list->set (car cc)) (list->set (car rr)))
+                   (iter (cdr cc) (cdr rr) (add1 i))]
+                  [else (format "are elemente greșite la al ~s-lea pas: am primit ~s dar așteptam ~s" i (car cc) (car rr))])))))))
 
 
 ; Testele încep de aici.
 (sunt 3 exerciții)
 
-(exercițiul 1 : 40 puncte)
-(when (andmap procedure? (list best-k-rating best-k-duration))
-; best-k-rating
-(check-part 'a (/ 1 10) (best-k-rating '() 0) is '())
-(check-part 'b (/ 1 10) (best-k-rating (list m8 ms9 ms3 m7) 4) is (list ms9 m8 m7 ms3))
-(check-part 'c (/ 1 10) (best-k-rating (list m6 m5 m7) 10) is (list m7 m6 m5))
-(check-part 'd (/ 1 10) (best-k-rating (list m6 m10 m5 m7 m9 ms3) 3) is (list m10 m9 m7))
-(check-part 'e (/ 1 10) (best-k-rating (list m8 m7 ms8) 3) in (list (list m8 ms8 m7) (list ms8 m8 m7)))
-; best-k-duration
-(check-part 'f (/ 1 10) (best-k-duration (list ms7) 0) is '())
-(check-part 'g (/ 1 10) (best-k-duration (list m8 ms9 ms3 m7) 4) is (list ms3 ms9 m7 m8))
-(check-part 'h (/ 1 10) (best-k-duration (list m6 m5 m7) 10) is (list m5 m7 m6))
-(check-part 'i (/ 1 10) (best-k-duration (list m6 m10 m5 m7 m9 ms3) 3) is (list ms3 m9 m5))
-(check-part 'f (/ 1 10) (best-k-duration (list m8 ms10 m8) 3) is (list ms10 m8 m8)))
+(exercițiul 1 : 45 puncte)
+(check-part 'a (/ 1 15) (add-rating '(a 0 (7) (7))  7)   is '(a 1 (7 (7)) (7)))
+(check-part 'b (/ 1 15) (add-rating '(a 1 (4) ()) 7)   is '(a 0 (4) (7)))
+(check-part 'c (/ 1 15) (add-rating '(a 1 (7) ()) 4)   is '(a 0 (4) (7)))
+(check-part 'd (/ 1 15) (add-rating '(a 0 (4) (7)) 5)  is '(a 1 (5 (4)) (7)))
+(check-part 'e (/ 1 15) (add-rating '(a 0 (4) (7)) 10) is '(a 1 (7 (4)) (10)))
+(check-part 'f (/ 1 15) (add-rating '(a 0 (4) (7)) 1)  is '(a 1 (4 (1)) (7)))
+(check-part 'g (/ 1 15) (add-rating '(dontgiveup 1 (2 (1)) (8)) 1) is '(dontgiveup 0 (1 (1)) (2 (8))))
+(check-part 'h (/ 1 15) (add-rating '(boss 1 (7 (7) (2)) (8 (10))) 5) is '(boss 0 (7 (2) (5)) (7 (8 (10)))))
+(check-part 'i (/ 1 15) (add-rating '(youcandoit 1 (3 (1) (2)) (4 (7))) 5) is '(youcandoit 0 (3 (1) (2)) (4 (5) (7))))
+(check-part 'j (/ 1 15) (add-rating '(dontgiveup 1 (7 (4) (6 (2))) (10 (10 (10)))) 9) is '(dontgiveup 0 (7 (4) (6 (2))) (9 (10 (10 (10))))))
+(check-part 'k (/ 1 15) (add-rating '(omg 0 (6 (2) (5 (2))) (8 (8 (10) (9)))) 3) is '(omg 1 (6 (3) (2) (5 (2))) (8 (8 (10) (9)))))
+(check-part 'l (/ 1 15) (add-rating '(youcandoit 0 (4 (2) (4) (1)) (4 (5 (7) (10)))) 4) is '(youcandoit 1 (4 (4) (2) (4) (1)) (4 (5 (7) (10)))))
+(check-part 'm (/ 1 15) (add-rating '(omg 0 (5 (2) (2) (3)) (5 (6) (6 (6)))) 1) is '(omg 1 (5 (1) (2) (2) (3)) (5 (6) (6 (6)))))
+(check-part 'n (/ 1 15) (add-rating '(boss 1 (5 (5) (1) (2) (4)) (8 (9) (9) (10))) 6) is '(boss 0 (5 (5) (1) (2) (4)) (6 (8 (9) (9) (10)))))
+(check-part 'o (/ 1 15) (add-rating '(dontgiveup 0 (5 (3 (1) (2) (2))) (5 (9) (9) (5 (7)))) 5) is '(dontgiveup 1 (5 (5) (3 (1) (2) (2))) (5 (9) (9) (5 (7)))))
 
-(exercițiul 2 : 30 puncte)
-(check-part 'a (/ 1 5)
-            (update-pairs (lambda (_) true)
-                          '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
-                            (b 10 (9) (6) (8) (9) (8) (7 (7)))
-                            (c 10 (8) (10 (8) (7) (9) (8) (6)))))
-            is '((a 10 (9) (8) (9 (7) (9 (8)))) ; Și-a pierdut rădăcina.
-                 (b 10 (9) (6) (8) (9) (8) (7 (7)))
-                 (c 10 (8) (10 (8) (7) (9) (8) (6)))))
-(check-part 'b (/ 1 5)
-            (update-pairs (lambda (p) (equal? (ph-root (cdr p)) 10))
-                          '((a 9.5 (9) (9.5 (8) (9 (7) (9 (8)))))
-                            (b 9.5 (9) (6) (8) (9) (8) (7 (7)))
-                            (c)
-                            (d 10 (8) (9.5 (8) (7) (9) (8) (6)))))
-            is '((a 9.5 (9) (9.5 (8) (9 (7) (9 (8)))))
-                 (b 9.5 (9) (6) (8) (9) (8) (7 (7)))
-                 (c)
-                 (d 9.5 (8) (8) (7) (9) (8) (6))))  ; Și-a pierdut rădăcina.
-(check-part 'c (/ 1 5)
-            (update-pairs (lambda (p) (equal? 'b (car p)))
-                          '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
-                            (b 10 (9) (6) (8) (9) (8) (7 (7)))
-                            (c 10 (8) (10 (8) (7) (9) (8) (6)))))
-            is '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
-                 (b 9 (8 (7 (7))) (9 (8)) (6)) ; Și-a pierdut rădăcina.
-                 (c 10 (8) (10 (8) (7) (9) (8) (6)))))
-(let ([pairs '((a 3 (2) (1))
-               (b 10 (7 (3)) 5)
-               (c)
-               (d 2)
-               (e))])
-  ; Dacă nicio pereche nu satisface predicatul, se întoarce lista nemodificată.
-  (check-part 'd (/ 1 5) (update-pairs (lambda (_) false) pairs) is pairs)
-  ; Dacă PH-ul perechii este vid, se întoarce lista nemodificată.
-  (check-part 'e (/ 1 5) (update-pairs (lambda (p) (ph-empty? (cdr p))) pairs) is pairs))
-
-(exercițiul 3 : 50 puncte)
-
-; Verifică dacă valoarea returnată este o listă de perechi, așa cum e cerut.
-; has-right-type: T -> True | Str
-(define (has-right-type? res)
-  (define (elem-has-right-type? x) (and (pair? x) (symbol? (car x)) (number? (cdr x))))
-  (if (and (list? res) (andmap elem-has-right-type? res))
-      true
-      "nu are tipul cerut (listă de perechi Symbol x Number)"))
-
-; Verifică dacă perechile returnate se găsesc printre cele inițiale.
-; valid-counts: [(Symbol, PH)] -> ([(Symbol, Number)] -> True | Str)
-(define (valid-counts? ref-pairs)
-  ; make-multiset: [T] -> HashTable
-  (define (make-multiset l)
-    (foldl (lambda (x mset) (hash-set mset x (add1 (hash-ref mset x 0))))
-           (make-immutable-hash)
-           l))
-  ; superset?: HashTable x HashTable -> Bool
-  (define (superset? superms ms)
-    (andmap identity (hash-map ms (lambda (k v) (<= v (hash-ref superms k 0))))))
-
-  ; tagged-pairs: (Symbol, PH) -> [(Symbol, Number)]
-  (define (tagged-pairs symbol-ph)
-    (match symbol-ph
-      [(cons symbol ph) (map (lambda (i) (cons symbol i)) (ph->list ph))]))
-  ; ref-counts: HashTable
-  (define ref-counts (make-multiset (apply append (map tagged-pairs ref-pairs))))
-
-  ; : [(Symbol, Number)] -> True | Str
-  (lambda (candidate-pairs)
-    (if (superset? ref-counts (make-multiset candidate-pairs))
-        true
-        "nu e un subset al elementelor inițiale; poate returnezi elemente duplicate sau nume greșite?")))
-
-; Verifică dacă sunt returnate cele mai mari K rating-uri, în ordine.
-; valid-order: [(Symbol, PH)] x Number -> ([(Symbol, Number)] -> True | Str)
-(define (valid-order? ref-pairs k)
-  (define all-ratings      (apply append (map (lambda (p) (ph->list (cdr p))) ref-pairs)))
-  (define sorted-ratings   (sort all-ratings >))
-  (define expected-ratings (take sorted-ratings (min k (length sorted-ratings))))
-
-  ; : [(Symbol, Number)] -> True | Str
-  (lambda (candidate-pairs)
-    (if (equal? expected-ratings (map cdr candidate-pairs))
-        true
-        (format "pare să aibă rating-uri greșite (ne așteptam la ~s în ordinea asta)" expected-ratings))))
+(exercițiul 2 : 45 puncte)
+(check-part 'a (/ 1 9) (reviews->quads empty-stream) is empty-stream)
+(check-part 'b (/ 1 9) (stream-take (reviews->quads inf-stream) 5)
+            just-conds 'nil (same-seq-of-sets '([(a 1 (7) ())]
+                                                [(b 1 (8) ()) (a 1 (7) ())]
+                                                [(b 0 (8) (9)) (a 1 (7) ())]
+                                                [(b 0 (8) (9)) (a 0 (7) (7))]
+                                                [(b 1 (8 (8)) (9)) (a 0 (7) (7))])))
+(check-part 'c (/ 1 9) (reviews->quads (stream '(a . 4) '(a . 1))) just-conds 'nil (stream-equals? '([(a 1 (4) ())]
+                                                                                                     [(a 0 (1) (4))])))
+(check-part 'd (/ 1 9) (reviews->quads (stream '(a . 4) '(b . 1)))
+            just-conds 'nil (same-seq-of-sets '([(a 1 (4) ())]
+                                                [(a 1 (4) ()) (b 1 (1) ())]))) ; Ordinea din interiorul unui pas nu contează.
+(check-part 'e (/ 1 9) (reviews->quads (stream '(a . 4) '(b . 1) '(a . 2)))
+            just-conds 'nil (same-seq-of-sets '([(a 1 (4) ())]
+                                                [(a 1 (4) ()) (b 1 (1) ())]
+                                                [(a 0 (2) (4)) (b 1 (1) ())])))
+(check-part 'f (/ 1 9) (reviews->quads (stream '(a . 4) '(b . 1) '(a . 2) '(c . 7) '(b . 3) '(c . 9)))
+            just-conds 'nil (same-seq-of-sets '([(a 1 (4) ())]
+                                                [(a 1 (4) ()) (b 1 (1) ())]
+                                                [(a 0 (2) (4)) (b 1 (1) ())]
+                                                [(a 0 (2) (4)) (b 1 (1) ()) (c 1 (7) ())]
+                                                [(a 0 (2) (4)) (b 0 (1) (3)) (c 1 (7) ())]
+                                                [(a 0 (2) (4)) (b 0 (1) (3)) (c 0 (7) (9))])))
+(check-part 'g (/ 1 9) (reviews->quads (stream '(c . 6) '(c . 1) '(a . 3) '(b . 2) '(a . 1) '(a . 1) '(a . 2)))
+            just-conds 'nil (same-seq-of-sets '([(c 1 (6) ())]
+                                                [(c 0 (1) (6))]
+                                                [(c 0 (1) (6)) (a 1 (3) ())]
+                                                [(c 0 (1) (6)) (a 1 (3) ()) (b 1 (2) ())]
+                                                [(c 0 (1) (6)) (a 0 (1) (3)) (b 1 (2) ())]
+                                                [(c 0 (1) (6)) (a 1 (1 (1)) (3)) (b 1 (2) ())]
+                                                [(c 0 (1) (6)) (a 0 (1 (1)) (2 (3))) (b 1 (2) ())])))
+(check-part 'h (/ 1 9) (reviews->quads (stream '(d . 2) '(c . 9) '(d . 7) '(f . 4) '(b . 4) '(c . 6) '(d . 3) '(e . 2) '(e . 6) '(a . 3) '(f . 1)))
+            just-conds 'nil (same-seq-of-sets '([(d 1 (2) ())]
+                                                [(d 1 (2) ()) (c 1 (9) ())]
+                                                [(d 0 (2) (7)) (c 1 (9) ())]
+                                                [(d 0 (2) (7)) (c 1 (9) ()) (f 1 (4) ())]
+                                                [(d 0 (2) (7)) (c 1 (9) ()) (f 1 (4) ()) (b 1 (4) ())]
+                                                [(d 0 (2) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ())]
+                                                [(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ())]
+                                                [(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ()) (e 1 (2) ())]
+                                                [(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ()) (e 0 (2) (6))]
+                                                [(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ()) (e 0 (2) (6)) (a 1 (3) ())]
+                                                [(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 0 (1) (4)) (b 1 (4) ()) (e 0 (2) (6)) (a 1 (3) ())])))
+(check-part 'i (/ 1 9) (reviews->quads (stream '(b . 8) '(g . 4) '(h . 8) '(g . 4) '(d . 7) '(a . 4) '(g . 8) '(g . 6) '(c . 6) '(f . 3) '(d . 2) '(e . 5) '(a . 6) '(b . 4) '(f . 6) '(b . 3) '(d . 5)))
+            just-conds 'nil (same-seq-of-sets '([(b 1 (8) ())]
+                                                [(b 1 (8) ()) (g 1 (4) ())]
+                                                [(b 1 (8) ()) (g 1 (4) ()) (h 1 (8) ())]
+                                                [(b 1 (8) ()) (g 0 (4) (4)) (h 1 (8) ())]
+                                                [(b 1 (8) ()) (g 0 (4) (4)) (h 1 (8) ()) (d 1 (7) ())]
+                                                [(b 1 (8) ()) (g 0 (4) (4)) (h 1 (8) ()) (d 1 (7) ()) (a 1 (4) ())]
+                                                [(b 1 (8) ()) (g 1 (4 (4)) (8)) (h 1 (8) ()) (d 1 (7) ()) (a 1 (4) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 1 (7) ()) (a 1 (4) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 1 (7) ()) (a 1 (4) ()) (c 1 (6) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 1 (7) ()) (a 1 (4) ()) (c 1 (6) ()) (f 1 (3) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 1 (4) ()) (c 1 (6) ()) (f 1 (3) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 1 (4) ()) (c 1 (6) ()) (f 1 (3) ()) (e 1 (5) ())]
+                                                [(b 1 (8) ()) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 1 (3) ()) (e 1 (5) ())]
+                                                [(b 0 (4) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 1 (3) ()) (e 1 (5) ())]
+                                                [(b 0 (4) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())]
+                                                [(b 1 (4 (3)) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())]
+                                                [(b 1 (4 (3)) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 1 (5 (2)) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())])))
 
 
-(let ([pairs '() ]) ; Input gol.
-  (check-part 'a (/ 1 10) (best-k-ratings-overall pairs 7) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 7)))
-(let ([pairs '((A 9 (7) (8))
-               (B 10))])
-  (check-part 'b (/ 1 10) (best-k-ratings-overall pairs 1) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 1))
-  (check-part 'c (/ 1 10) (best-k-ratings-overall pairs 3) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 3))
-  (check-part 'd (/ 1 10) (best-k-ratings-overall pairs 4) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 4)))
-(let ([pairs '((a 10 (9) (10 (8) (9 (7) (9 (8)))))
-               (b 10 (9) (6) (8) (9) (8) (7 (7)))
-               (c 10 (8) (10 (8) (7) (9) (8) (6))))])
-  (check-part 'e (/ 1 10) (best-k-ratings-overall pairs 3) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 3))
-  (check-part 'f (/ 1 10) (best-k-ratings-overall pairs 7) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 7))
-  (check-part 'g (/ 1 10) (best-k-ratings-overall pairs 12) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 12))
-  (check-part 'h (/ 1 10) (best-k-ratings-overall pairs 24) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 24))
-  (check-part 'i (/ 1 10) (best-k-ratings-overall pairs 0) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 0))
-  (check-part 'j (/ 1 10) (best-k-ratings-overall pairs 300) just-conds 'nil has-right-type? (valid-counts? pairs) (valid-order? pairs 300)))
+(exercițiul 3 : 30 puncte)
+(check-part 'a (/ 1 5) (quads->medians empty-stream) is empty-stream)
+(check-part 'b (/ 1 5) (quads->medians (stream '[(a 1 (4) ())])) just-conds 'nil (stream-equals? '([(a . 4)])))
+(check-part 'c (/ 1 5) (quads->medians (stream '[(a 1 (4) ())]
+                                               '[(a 1 (4) ()) (b 1 (1) ())]
+                                               '[(a 0 (2) (4)) (b 1 (1) ())]))
+            just-conds 'nil (same-seq-of-sets '([(a . 4)]
+                                                [(a . 4) (b . 1)]
+                                                [(a . 3) (b . 1)])))
+(check-part 'd (/ 1 5) (quads->medians (stream '[(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 1 (4) ()) (b 1 (4) ()) (e 0 (2) (6)) (a 1 (3) ())]
+                                               '[(d 1 (3 (2)) (7)) (c 0 (6) (9)) (f 0 (1) (4)) (b 1 (4) ()) (e 0 (2) (6)) (a 1 (3) ())]))
+            just-conds 'nil (same-seq-of-sets '([(d . 3) (c . 15/2) (f . 4)   (b . 4) (e . 4) (a . 3)]
+                                                [(d . 3) (c . 15/2) (f . 5/2) (b . 4) (e . 4) (a . 3)])))
+(check-part 'e (/ 1 5) (quads->medians (stream '[(b 0 (4) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())]
+                                               '[(b 1 (4 (3)) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 0 (2) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())]
+                                               '[(b 1 (4 (3)) (8)) (g 0 (4 (4)) (6 (8))) (h 1 (8) ()) (d 1 (5 (2)) (7)) (a 0 (4) (6)) (c 1 (6) ()) (f 0 (3) (6)) (e 1 (5) ())]))
+            just-conds 'nil (same-seq-of-sets '([(b . 6) (g . 5) (h . 8) (d . 9/2) (a . 5) (c . 6) (f . 9/2) (e . 5)]
+                                                [(b . 4) (g . 5) (h . 8) (d . 9/2) (a . 5) (c . 6) (f . 9/2) (e . 5)]
+                                                [(b . 4) (g . 5) (h . 8) (d . 5) (a . 5) (c . 6) (f . 9/2) (e . 5)])))
 
 (sumar)
