@@ -85,7 +85,6 @@
     )
 )
 
-
 ; TODO 2 (30p)
 ; update-pairs : ((Symbol, PH) -> Bool) x [(Symbol, PH)]
 ;                -> [(Symbol, PH)]
@@ -124,7 +123,6 @@
     )
 )
 
-
 ; TODO 3 (50p)
 ; best-k-ratings-overall : [(Symbol, PH)] x Int
 ;                          -> [(Symbol, Number)]
@@ -149,6 +147,7 @@
 ;  - Use named let to perform step 2 of the
 ;    algorithm.
 (define (best-k-ratings-overall pairs k)
+    ; from input: the ratings from each movie are sorted
     ; from pairs of name - heap of ratings, it becomes a sorted heap with all names and best ratings
     (define initial-ph
         (foldl (λ (pair ph)
@@ -158,7 +157,7 @@
                 pairs
         )
     )
-    ; extract the best k ratings
+
     (let extract-k ((ph initial-ph)
                     (result '())
                     (current-pairs pairs))
@@ -168,7 +167,7 @@
                 (define best-pair (ph-root ph))
                 (define name (car best-pair))
                 (define remaining-ph (ph-del-root merge-max-rating ph))
-                ; update the pairs for this movie
+                ; remove the best pair with the best rating from the list
                 (define updated-pairs 
                     (update-pairs (λ (p) (equal? (car p) name)) current-pairs)
                 )
@@ -176,15 +175,14 @@
                 (define updated-movie-pair 
                     (findf (λ (p) (equal? (car p) name)) updated-pairs)
                 )
-                ; extract the updated movie ratio for the movie
+                ; extract the updated ph without the best rating
                 (define next-rating-ph 
                     (and updated-movie-pair (cdr updated-movie-pair))
                 )
-                ; add the following rating to the heap if there
+
                 (extract-k
-                    ; the updated heap
-                    (if (and next-rating-ph (not (ph-empty? next-rating-ph)))
-                        ; if there is a next rating, add it to the heap and sort it
+                    (if (not (ph-empty? next-rating-ph))
+                        ; if there is a next rating for the same name, add it to the heap and sort it
                         (ph-insert merge-max-rating 
                             (append (list name) (ph-root next-rating-ph))
                                 remaining-ph)
