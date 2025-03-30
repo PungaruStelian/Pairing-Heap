@@ -3,184 +3,200 @@
 (require "etapa2.rkt")
 (provide (all-defined-out))
 
-;; Această etapă continuă seria aplicațiilor heap-urilor  
-;; de împerechere, pe care le vom folosi pentru a calcula
-;; în mod dinamic mediana recenziilor unui film, simulând
-;; condițiile din realitate - în care apar în permanență
-;; noi recenzii pentru diverse filme.
+;; This stage continues the series of applications of pairing heaps,
+;; which we will use to dynamically calculate the median of movie reviews,
+;; simulating real-world conditions - in which new reviews continuously
+;; appear for various movies.
 ;;    
-;; Pentru a modela această dinamică folosim un flux de
-;; perechi (nume-film . rating), pe baza căruia calculăm
-;; un flux de stadii evolutive astfel:
-;;  - fiecare stadiu este reprezentat ca listă de perechi
-;;    * o pereche pentru fiecare film cu minim o recenzie
-;;    * fiecare pereche este de forma
-;;      (nume-film . mediană-rating-uri-primite-până-acum)
-;;  - fiecare nouă recenzie determină actualizarea unei
-;;    mediane, adică trecerea într-un alt stadiu,
-;;    generând un nou element în fluxul rezultat
+;; To model this dynamic, we use a stream of pairs (movie-name . rating),
+;; based on which we calculate a stream of evolutionary stages as follows:
+;;  - each stage is represented as a list of pairs
+;;    * one pair for each movie with at least one review
+;;    * each pair has the form
+;;      (movie-name . median-of-ratings-received-so-far)
+;;  - each new review determines the update of a median, meaning
+;;    the transition to another stage, generating a new element
+;;    in the resulting stream
 ;;
-;; Algoritmul folosit este următorul:
-;;  Fluxul de perechi este transformat într-un flux de
-;;  liste de cvartete (nume-film delta max-ph min-ph)
-;;   - fiecare element din flux conține câte un cvartet 
-;;     pentru fiecare film care are minim o recenzie
-;;   - dacă filmul are un număr par de recenzii:
-;;     - max-ph și min-ph au aceeași dimensiune
+;; The algorithm used is as follows:
+;;  The stream of pairs is transformed into a stream of lists
+;;  of quartets (movie-name delta max-ph min-ph)
+;;   - each element in the stream contains one quartet
+;;     for each movie that has at least one review
+;;   - if the movie has an even number of reviews:
+;;     - max-ph and min-ph have the same size
 ;;     - delta = size(max-ph) - size(min-ph) = 0
-;;     - max-ph = max-PH cu cele mai mici rating-uri
-;;     - min-ph = min-PH cu cele mai mari rating-uri
-;;     - mediana este media rădăcinilor celor 2 PH-uri
-;;   - dacă filmul are un număr impar de recenzii:
-;;     - max-ph are un element în plus față de min-ph
+;;     - max-ph = max-PH with the smallest ratings
+;;     - min-ph = min-PH with the largest ratings
+;;     - the median is the average of the roots of the 2 PHs
+;;   - if the movie has an odd number of reviews:
+;;     - max-ph has one more element than min-ph
 ;;     - delta = size(max-ph) - size(min-ph) = 1
-;;     - max-ph = max-PH cu cele mai mici rating-uri
-;;     - min-ph = min-PH cu cele mai mari rating-uri
-;;     - mediana este rădăcina lui max-ph
+;;     - max-ph = max-PH with the smallest ratings
+;;     - min-ph = min-PH with the largest ratings
+;;     - the median is the root of max-ph
 ;;
-;; Pentru completarea cu succes a etapei este necesar să
-;; calculați medianele cu algoritmul descris în enunț.
-;; În caz contrar, punctajul acordat de checker va fi retras.
+;; For successful completion of this stage, it is necessary to
+;; calculate the medians using the algorithm described above.
+;; Otherwise, the points awarded by the checker will be withdrawn.
 
 
 ; TODO 1 (45p)
 ; add-rating : (Symbol, Int, PH, PH) x Number
 ;              -> (Symbol, Int, PH, PH)
-; in: cvartet (nume delta max-ph min-ph),
-;     rating de adăugat
-; out: cvartet actualizat prin adăugarea 
-;      rating-ului, astfel:
-;  - dacă rating <= root(max-ph)
-;    inserează rating în max-ph, actualizând delta
-;  - altfel
-;    inserează rating în min-ph, actualizând delta
-;  - dacă delta > 1
-;    mută root(max-ph) în min-ph
-;  - dacă delta < 0
-;    mută root(min-ph) în max-ph
-(define (add-rating quad rating)
-  (match quad
-    [(list name delta max-ph min-ph)
-     (cond
-       ; Cazul 1: Ambele heap-uri sunt goale - inițializăm max-ph
-       [(and (ph-empty? max-ph) (ph-empty? min-ph))
-        (list name 1 (val->ph rating) empty-ph)]
-       
-       ; Cazul 2: Doar max-ph este gol (caz excepțional)
-       [(ph-empty? max-ph)
-        (list name 1 (val->ph rating) min-ph)]
-       
-       ; Cazul 3: Doar min-ph este gol
-       [(ph-empty? min-ph)
-        (if (<= rating (ph-root max-ph))
-            ; Adăugăm în max-ph și verificăm echilibrarea
-            (let* ([new-max-ph (ph-insert merge-max rating max-ph)]
-                   [new-delta (+ delta 1)])
-              (if (> new-delta 1)
-                  ; Echilibrăm mutând rădăcina din max-ph în min-ph
-                  (list name 0 
-                        (ph-del-root merge-max new-max-ph)
-                        (val->ph (ph-root new-max-ph)))
-                  ; Nu trebuie să echilibrăm
-                  (list name new-delta new-max-ph min-ph)))
-            ; Adăugăm în min-ph
-            (list name (- delta 1) max-ph (val->ph rating)))]
-       
-       ; Cazul 4: Rating <= rădăcina max-ph, adăugăm în max-ph
-       [(<= rating (ph-root max-ph))
-        (let* ([new-max-ph (ph-insert merge-max rating max-ph)]
-               [new-delta (+ delta 1)])
-          (if (> new-delta 1)
-              ; Echilibrăm mutând rădăcina din max-ph în min-ph
-              (list name 0 
-                    (ph-del-root merge-max new-max-ph)
-                    (ph-insert merge-min (ph-root new-max-ph) min-ph))
-              ; Nu trebuie să echilibrăm
-              (list name new-delta new-max-ph min-ph)))]
-       
-       ; Cazul 5: Rating > rădăcina max-ph, adăugăm în min-ph
-       [else
-        (let* ([new-min-ph (ph-insert merge-min rating min-ph)]
-               [new-delta (- delta 1)])
-          (if (< new-delta 0)
-              ; Echilibrăm mutând rădăcina din min-ph în max-ph
-              ; CORECȚIE: delta trebuie să fie 1, nu 0, după echilibrare
-              (list name 1
-                    (ph-insert merge-max (ph-root new-min-ph) max-ph)
-                    (ph-del-root merge-min new-min-ph))
-              ; Nu trebuie să echilibrăm
-              (list name new-delta max-ph new-min-ph)))])])
+; in: quartet (name delta max-ph min-ph),
+;     rating to add
+; out: updated quartet by adding the rating, as follows:
+;  - if rating <= root(max-ph)
+;    insert rating into max-ph, updating delta
+;  - else
+;    insert rating into min-ph, updating delta
+;  - if delta > 1
+;    move root(max-ph) to min-ph
+;  - if delta < 0
+;    move root(min-ph) to max-ph
+
+(define (balance-ph name max-ph min-ph delta)
+    (cond
+        ; max-ph has too many elements
+        ((> delta 1)
+            (let ((max-root (ph-root max-ph)))
+                (list name 0
+                    (ph-del-root merge-max max-ph)
+                    (if (ph-empty? min-ph)
+                        (val->ph max-root)
+                        (ph-insert merge-min max-root min-ph)
+                    )
+                )
+            )
+        )
+        ; min-ph has too many elements
+        ((< delta 0)
+            (let ((min-root (ph-root min-ph)))
+                (list name 1
+                    (ph-insert merge-max min-root max-ph)
+                    (ph-del-root merge-min min-ph)
+                )
+            )
+        )
+        ; Heaps are already balanced
+        (else (list name delta max-ph min-ph))
+    )
 )
 
+(define (add-rating quad rating)
+    (let (
+            (name (car quad))
+            (delta (cadr quad))
+            (max-ph (caddr quad))
+            (min-ph (cadddr quad))
+        )
+        (if (ph-empty? max-ph)
+            ; if max-ph is empty, it means min-ph is also empty
+            (list name 1 (val->ph rating) empty-ph)
+            ; regardless of whether min-ph is empty, we insert based on max-ph's root
+            (if (<= rating (ph-root max-ph))
+                ; max-ph contains the lower half of ratings
+                (let ((new-max-ph (ph-insert merge-max rating max-ph)))
+                    (balance-ph name new-max-ph min-ph (+ delta 1))
+                )
+                ; min-ph contains the upper half of ratings
+                (let ((new-min-ph (ph-insert merge-min rating min-ph)))
+                        (balance-ph name max-ph new-min-ph (- delta 1))
+                )
+            )
+        )
+    )
+)
 
 ; TODO 2 (45p)
 ; reviews->quads : Stream<(Symbol, Number)> ->
 ;                  Stream<[(Symbol, Int, PH, PH)]>
-; in: stream de perechi (nume . rating)
-; out: stream de liste de cvartete
-;      (nume delta max-ph min-ph)
-;  - elementul k din rezultat corespunde primelor
-;    k recenzii din input (ex: dacă primele 10
-;    recenzii sunt pentru 3 filme distincte, al
-;    10-lea element din fluxul rezultat conține o
-;    listă de 3 cvartete - unul pentru fiecare film)
-; RESTRICȚII (20p):
-;  - Lucrați cu operatorii pe fluxuri, fără a
-;    converti liste în fluxuri sau fluxuri în liste.
+; in: stream of pairs (name . rating)
+; out: stream of lists of quartets
+;      (name delta max-ph min-ph)
+;  - element k in the result corresponds to the first
+;    k reviews from input (ex: if the first 10
+;    reviews are for 3 distinct movies, the
+;    10th element of the resulting stream contains a
+;    list of 3 quartets - one for each movie)
+; RESTRICTIONS (20p):
+;  - Work with stream operators, without
+;    converting lists to streams or streams to lists.
 (define (reviews->quads reviews)
-  ; Implementăm un echivalent al lui stream-scan
-  (define (my-stream-scan f init strm)
-    (if (stream-empty? strm)
-        empty-stream
-        (let loop ([acc init] [s strm])
-          (if (stream-empty? s)
-              empty-stream
-              (let ([new-acc (f acc (stream-first s))])
-                (stream-cons new-acc 
-                            (loop new-acc (stream-rest s))))))))
+    (define (my-fold f acc s)
+        (if (stream-empty? s)
+            s
+            (let* (
+                    (head (stream-first s))
+                    (tail (stream-rest s))
+                    (new-acc (f acc head))
+                )
+                (stream-cons new-acc (my-fold f new-acc tail))
+            )
+        )
+    )
   
-  (my-stream-scan
-   (lambda (quads review)
-     (define name (car review))
-     (define rating (cdr review))
+    (my-fold
+        (lambda (quads review)
+            (define name (car review))
+            (define rating (cdr review))
+            ; check if the movie already exists
+            (define existing-quad (findf (lambda (q) (equal? (car q) name)) quads))
      
-     ; Verificăm dacă filmul există deja
-     (define existing-quad (findf (lambda (q) (equal? (car q) name)) quads))
-     
-     (if existing-quad
-         ; Actualizăm cvartetul existent
-         (map (lambda (q)
-                (if (equal? (car q) name)
-                    (add-rating q rating)
-                    q))
-              quads)
-         ; Adăugăm un cvartet nou cu film care nu are încă recenzii
-         (append quads (list (add-rating (list name 0 empty-ph empty-ph) rating)))))
-   '()
-   reviews))
+            (if existing-quad
+                ; update the existing quad with the new rating
+                (map 
+                    (lambda (q)
+                        (if (equal? (car q) name)
+                            (add-rating q rating)
+                            q
+                        )
+                    )
+                    quads
+                )
+                ; add a new quad for the movie
+                (append quads (list (add-rating (list name 0 empty-ph empty-ph) rating)))
+            )
+        )
+        empty-ph
+        reviews
+   )
+)
 
 
 ; TODO 3 (30p)
 ; quads->medians : Stream<[(Symbol, Int, PH, PH)]> ->
 ;                  Stream<[(Symbol, Number)]>  
-; in: stream de liste de cvartete (ca mai sus)
-; out: stream de liste de perechi (nume-film . mediană)
-;  - mediana se calculează pe baza PH-urilor din
-;    fiecare cvartet, conform algoritmului de mai sus
-; RESTRICȚII (20p):
-;  - Nu folosiți recursivitate explicită. Folosiți cel
-;    puțin o funcțională pe fluxuri.
-(define (quads->medians quads)
-  (stream-map
-   (lambda (quad-list)
-     (map (lambda (q)
-            (match q
-              [(list name delta max-ph min-ph)
-               (cons name
-                     (if (= delta 0)
-                         ; Număr par de ratinguri: media rădăcinilor
-                         (/ (+ (ph-root max-ph) (ph-root min-ph)) 2)
-                         ; Număr impar de ratinguri: rădăcina lui max-ph
-                         (ph-root max-ph)))]))
-          quad-list))
-   quads))
+; in: stream of lists of quartets (as above)
+; out: stream of lists of pairs (movie-name . median)
+;  - the median is calculated based on the PHs from
+;    each quartet, according to the algorithm above
+; RESTRICTIONS (20p):
+;  - Do not use explicit recursion. Use at least
+;    one functional on streams.
+(define (quads->medians quad-list-stream)
+    (stream-map
+        (lambda (quad-list)
+            (map 
+                (lambda (quad)
+                    (let (
+                        (name (car quad))
+                        (delta (cadr quad))
+                        (max-ph (caddr quad))
+                        (min-ph (cadddr quad))
+                        )
+                        (cons name
+                              (if (= delta 0)
+                                  (/ (+ (ph-root max-ph) (ph-root min-ph)) 2)
+                                  (ph-root max-ph)
+                              )
+                        )
+                    )
+                )
+                quad-list
+            )
+        )
+        quad-list-stream
+    )
+)
